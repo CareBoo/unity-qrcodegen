@@ -1,0 +1,48 @@
+name: Build Targets
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [ubuntu-latest]
+        platform:
+          - aarch64-apple-darwin
+          - aarch64-apple-ios
+          - aarch64-linux-android
+          - arm-linux-androideabi
+          - wasm32-unknown-unknown
+          - x86_64-apple-darwin
+          - x86_64-unknown-linux-gnu
+          - x86_64-pc-windows-msvc
+          - i686-pc-windows-msvc
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --target ${{ matrix.target }} --release
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.target }}
+          path: target/${{ matrix.target }}
