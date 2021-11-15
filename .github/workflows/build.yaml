@@ -14,15 +14,21 @@ jobs:
       matrix:
         host: [ubuntu-latest]
         target:
-          - aarch64-apple-darwin
           - aarch64-apple-ios
           - aarch64-linux-android
           - arm-linux-androideabi
           - wasm32-unknown-unknown
-          - x86_64-apple-darwin
           - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
-          - i686-pc-windows-msvc
+        include:
+          - host: macos-latest
+            target: aarch64-apple-darwin
+          - host: macos-latest
+            target: x86_64-apple-darwin
+          - host: windows-latest
+            target: i686-pc-windows-msvc
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
