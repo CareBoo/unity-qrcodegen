@@ -83,6 +83,54 @@
 //! ```
 
 use std::convert::TryFrom;
+use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::ptr;
+
+#[repr(C)]
+pub struct QRBuffer {
+	data: *mut bool,
+	len: usize,
+}
+
+impl QRBuffer {
+	pub fn empty() -> Self {
+		let data = ptr::null_mut();
+		let len = 0;
+		QRBuffer { data, len }
+	}
+}
+
+#[no_mangle]
+pub extern "C" fn encode_text(text: *const c_char) -> QRBuffer {
+	let text = unsafe { CStr::from_ptr(text) };
+	let text_str = match text.to_str() {
+		Ok(slice) => slice,
+		Err(_) => return QRBuffer::empty(),
+	};
+	match QrCode::encode_text(text_str, QrCodeEcc::Medium) {
+		Ok(qr_code) => {
+			let mut buf = qr_code.modules;
+			let data = buf.as_mut_ptr();
+			let len = buf.len();
+			std::mem::forget(buf);
+			QRBuffer { data, len }
+		}
+		Err(_) => QRBuffer::empty(),
+	}
+}
+
+#[no_mangle]
+pub extern "C" fn free_buf(buf: QRBuffer) {
+	if buf.data.is_null() {
+		return;
+	}
+	let s = unsafe { std::slice::from_raw_parts_mut(buf.data, buf.len) };
+	let s = s.as_mut_ptr();
+	unsafe {
+		Box::from_raw(s);
+	}
+}
 
 /*---- QrCode functionality ----*/
 
@@ -688,9 +736,9 @@ impl QrCode {
 		// For example the polynomial x^3 + 255x^2 + 8x + 93 is stored as the uint8 array [255, 8, 93].
 		let mut result = vec![0u8; degree - 1];
 		result.push(1); // Start off with the monomial x^0
-		// Compute the product polynomial (x - r^0) * (x - r^1) * (x - r^2) * ... * (x - r^{degree-1}),
-		// and drop the highest monomial term which is always 1x^degree.
-		// Note that r = 0x02, which is a generator element of this field GF(2^8/0x11D).
+				// Compute the product polynomial (x - r^0) * (x - r^1) * (x - r^2) * ... * (x - r^{degree-1}),
+				// and drop the highest monomial term which is always 1x^degree.
+				// Note that r = 0x02, which is a generator element of this field GF(2^8/0x11D).
 		let mut root: u8 = 1;
 		for _ in 0..degree {
 			// Unused variable i
